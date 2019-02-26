@@ -25,9 +25,9 @@ __version__ = '1.4.0'
 import numpy
 from PIL import Image
 
-# from . import adjustments
-from . import blends
-from . import utils
+import adjustments
+import blends
+import utils
 
 PY3 = False
 
@@ -41,21 +41,22 @@ if not hasattr(builtins, 'unicode'):
     PY3 = True
 
 class Layer:
-    """ Represents a raster layer that can be combined with other layers.
-    """
+    
+    """ Represents a raster layer that can be combined with other layers. """
+    
     def __init__(self, channels):
-        """ Channels is a four-element list of numpy arrays: red, green, blue, alpha.
+        """ Channels is a four-element list of numpy arrays:
+            red, green, blue, alpha.
         """
         self._rgba = channels
     
     def size(self):
-        """ Return width and height of the raster layer in pixels.
-        """
+        """ Return width and height of the raster layer in pixels. """
         return self._rgba[0].shape[1], self._rgba[0].shape[0]
     
     def rgba(self, width, height):
         """ Return a list of numpy arrays, one for each channel.
-        
+            
             Width and height are required, and the resulting channels
             will be clipped or extended to match the requested size.
         """
@@ -80,13 +81,12 @@ class Layer:
         return r, g, b, a
     
     def image(self):
-        """ Generate a new PIL Image representation of the contained channels.
-        """
+        """ Generate a new PIL Image representation of the contained channels. """
         return utils.rgba2img(self._rgba)
     
     def blend(self, other, mask=None, opacity=1, blendfunc=None):
         """ Return a new Layer, with data from another layer blended on top.
-        
+            
             See blends.combine() for details on blend functions.
         """
         no_dim = False
@@ -125,39 +125,36 @@ class Layer:
         """
         return Layer(adjustfunc(self._rgba))
 
-class Bitmap (Layer):
-    """ Raster layer instantiated with a bitmap image.
-    """
+class Bitmap(Layer):
+    
+    """ Raster layer instantiated with a bitmap image. """
+    
     def __init__(self, input):
-        """ Input is a PIL Image or file name.
-        """
+        """ Input is a PIL Image or file name. """
         if type(input) in (str, unicode):
             input = Image.open(input)
         
         self._rgba = utils.img2rgba(input.convert('RGBA'))
 
-class Color (Layer):
-    """ Simple single-color layer of indeterminate size.
-    """
+class Color(Layer):
+    
+    """ Simple single-color layer of indeterminate size. """
+    
     def __init__(self, red, green, blue, alpha=0xFF):
-        """ Red, green, blue and alpha are 8-bit channel values. Alpha optional.
-        """
+        """ Red, green, blue and alpha are 8-bit channel values. Alpha optional. """
         self._components = red / 255., green / 255., blue / 255., alpha / 255.
     
     def size(self):
-        """ Return nothing so it's clear that a color has no intrinsic size.
-        """
+        """ Return nothing so it's clear that a color has no intrinsic size. """
         return None
     
     def image(self):
-        """ Return a fresh 1x1 image with the correct color.
-        """
+        """ Return a fresh 1x1 image with the correct color. """
         color = [int(c * 255) for c in self._components]
         return Image.new('RGBA', (1, 1), tuple(color))
     
     def rgba(self, width, height):
-        """ Generate a new list of channel arrays for the given dimensions.
-        """
+        """ Generate a new list of channel arrays for the given dimensions. """
         r = numpy.ones((height, width)) * self._components[0]
         g = numpy.ones((height, width)) * self._components[1]
         b = numpy.ones((height, width)) * self._components[2]
@@ -166,8 +163,7 @@ class Color (Layer):
         return r, g, b, a
     
     def adjust(self, adjustfunc):
-        """
-        """
+        """ Adjust colors using an function “adjustfunc” """
         # make a list of 1x1 arrays as though this was a bitmap
         rgba = [numpy.ones((1, 1), dtype=float) * c for c in self._components]
         

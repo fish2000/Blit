@@ -22,9 +22,13 @@ from struct import pack
 
 import numpy
 
-from . import Layer
-from . import utils
-from . import blends
+try:
+    from Blit import Layer
+except ImportError:
+    from . import Layer
+
+import utils
+import blends
     
 def uint8(num):
     return pack('>B', num)
