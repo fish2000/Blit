@@ -1,3 +1,4 @@
+# encoding: utf-8
 """ Simple pixel-composition library.
 
 Dependencies: numpy, sympy, PIL.
@@ -18,156 +19,285 @@ and Blit.photoshop for PSD file output support.
 >>> orange = Color(255, 220, 180)
 >>> duotone = purple.blend(orange, mask=photo)
 """
-from __future__ import print_function, absolute_import
-
-__version__ = '1.4.0'
-
-import numpy
-from PIL import Image
+from __future__ import print_function
 
 import adjustments
 import blends
 import utils
+from layers import Layer, Bitmap, Color
 
-PY3 = False
+import re
+from collections import OrderedDict, namedtuple as NamedTuple
+from functools import wraps
+from pkgutil import extend_path
 
+if '__path__' in locals():
+    __path__ = extend_path(__path__, __name__)
+
+if not hasattr(__builtins__, 'cmp'):
+    def cmp(a, b):
+        return (a > b) - (a < b)
+
+# Embedded project metadata:
+__version__ = "‽.‽.‽"
+__title__ = 'Blit'
+__author__ = 'Michael Migurski'
+__maintainer__ = 'Alexander Böhn'
+__license__ = 'BSD'
+__copyright__ = '© 2012-2025 Michael Migurski'
+
+# get the project version tag without importing:
 try:
-    import builtins
-except ImportError:
-    import __builtin__ as builtins
+    exec(compile(open('__version__.py')).read(),
+                      '__version__.py', 'exec')
+except:
+    __version__ = '1.4.0'
 
-if not hasattr(builtins, 'unicode'):
-    unicode = str
-    PY3 = True
+# module exports:
+__all__ = ('__version__', 'version',
+           '__title__', '__author__', '__maintainer__',
+           '__license__',
+           '__copyright__',
+           '__path__', 'FIELDS', 'VersionInfo')
 
-class Layer:
-    
-    """ Represents a raster layer that can be combined with other layers. """
-    
-    def __init__(self, channels):
-        """ Channels is a four-element list of numpy arrays:
-            red, green, blue, alpha.
-        """
-        self._rgba = channels
-    
-    def size(self):
-        """ Return width and height of the raster layer in pixels. """
-        return self._rgba[0].shape[1], self._rgba[0].shape[0]
-    
-    def rgba(self, width, height):
-        """ Return a list of numpy arrays, one for each channel.
-            
-            Width and height are required, and the resulting channels
-            will be clipped or extended to match the requested size.
-        """
-        w, h = self.size()
-        
-        if w == width and h == height:
-            return self._rgba
-        
-        #
-        # In theory, this should bring back a right-sized image.
-        #
-        r, g, b, a = [numpy.zeros((height, width), dtype=float) for i in '1234']
-        
-        w = min(w, width)
-        h = min(h, height)
-        
-        r[:w,:h] = self._rgba[0][:h,:w]
-        g[:w,:h] = self._rgba[1][:h,:w]
-        b[:w,:h] = self._rgba[2][:h,:w]
-        a[:w,:h] = self._rgba[3][:h,:w]
-        
-        return r, g, b, a
-    
-    def image(self):
-        """ Generate a new PIL Image representation of the contained channels. """
-        return utils.rgba2img(self._rgba)
-    
-    def blend(self, other, mask=None, opacity=1, blendfunc=None):
-        """ Return a new Layer, with data from another layer blended on top.
-            
-            See blends.combine() for details on blend functions.
-        """
-        no_dim = False
-        
-        #
-        # Choose an output size based on the first input that has one.
-        #
-        if self.size():
-            dim = self.size()
-        elif other.size():
-            dim = other.size()
-        elif mask and mask.size():
-            dim = mask.size()
-        else:
-            no_dim = True
-            dim = 1, 1
-        
-        bottom_rgba = self.rgba(*dim)
-        alpha_chan = other.rgba(*dim)[3]
-        top_rgb = other.rgba(*dim)[0:3]
-        
-        if mask is not None:
-            # Multiply alpha channel by mask image luminance
-            alpha_chan *= utils.rgba2lum(mask.rgba(*dim))
-        
-        output_rgba = blends.combine(bottom_rgba, top_rgb, alpha_chan, opacity, blendfunc)
-        
-        if no_dim:
-            rgba = [chan[0,0] * 255 for chan in output_rgba]
-            return Color(*rgba)
-        
-        return Layer(output_rgba)
-    
-    def adjust(self, adjustfunc):
-        """
-        """
-        return Layer(adjustfunc(self._rgba))
+__dir__ = lambda: list(__all__)
 
-class Bitmap(Layer):
-    
-    """ Raster layer instantiated with a bitmap image. """
-    
-    def __init__(self, input):
-        """ Input is a PIL Image or file name. """
-        if type(input) in (str, unicode):
-            input = Image.open(input)
-        
-        self._rgba = utils.img2rgba(input.convert('RGBA'))
+FIELDS = ('major', 'minor', 'patch',
+          'pre',   'build')
 
-class Color(Layer):
-    
-    """ Simple single-color layer of indeterminate size. """
-    
-    def __init__(self, red, green, blue, alpha=0xFF):
-        """ Red, green, blue and alpha are 8-bit channel values. Alpha optional. """
-        self._components = red / 255., green / 255., blue / 255., alpha / 255.
-    
-    def size(self):
-        """ Return nothing so it's clear that a color has no intrinsic size. """
+# The `namedtuple` ancestor,
+# from which our VersionInfo struct inherits:
+VersionAncestor = NamedTuple('VersionAncestor',
+                              FIELDS,
+                              defaults=('', 0))
+
+# sets, for various comparisons and checks:
+fields = frozenset(FIELDS)
+string_types = { type(lit) for lit in ('', u'', r'') }
+byte_types = { bytes, bytearray } - string_types # On py2, bytes == str
+dict_types = { dict, OrderedDict }
+comparable = dict_types | { VersionAncestor }
+
+# utility conversion functions:
+def intify(arg):
+    if arg is None:
         return None
+    return int(arg)
+
+def strify(arg):
+    if arg is None:
+        return None
+    if type(arg) in string_types:
+        return arg
+    if type(arg) in byte_types:
+        return arg.decode('UTF-8')
+    return str(arg)
+
+def dictify(arg):
+    if arg is None:
+        return None
+    if hasattr(arg, '_asdict'):
+        return arg._asdict()
+    if hasattr(arg, 'to_dict'):
+        return arg.to_dict()
+    if type(arg) in dict_types:
+        return arg
+    return dict(arg)
+
+# compare version information by dicts:
+def compare_keys(dict1, dict2):
+    """ Blatantly based on code from “semver”: https://git.io/fhb98 """
     
-    def image(self):
-        """ Return a fresh 1x1 image with the correct color. """
-        color = [int(c * 255) for c in self._components]
-        return Image.new('RGBA', (1, 1), tuple(color))
+    for key in ('major', 'minor', 'patch'):
+        result = cmp(dict1.get(key), dict2.get(key))
+        if result:
+            return result
     
-    def rgba(self, width, height):
-        """ Generate a new list of channel arrays for the given dimensions. """
-        r = numpy.ones((height, width)) * self._components[0]
-        g = numpy.ones((height, width)) * self._components[1]
-        b = numpy.ones((height, width)) * self._components[2]
-        a = numpy.ones((height, width)) * self._components[3]
-        
-        return r, g, b, a
+    pre1, pre2 = dict1.get('pre'), dict2.get('pre')
+    if pre1 is None and pre2 is None:
+        return 0
+    if pre1 is None:
+        pre1 = '<unknown>'
+    elif pre2 is None:
+        pre2 = '<unknown>'
+    preresult = cmp(pre1, pre2)
     
-    def adjust(self, adjustfunc):
-        """ Adjust colors using an function “adjustfunc” """
-        # make a list of 1x1 arrays as though this was a bitmap
-        rgba = [numpy.ones((1, 1), dtype=float) * c for c in self._components]
-        
-        # apply adjustment to arrays and turn them back into 8-bit components
-        rgba = [chan[0,0] * 255 for chan in adjustfunc(rgba)]
-        
-        return Color(*rgba)
+    if not preresult:
+        return 0
+    if not pre1:
+        return 1
+    elif not pre2:
+        return -1
+    return preresult
+
+# comparison-operator method decorator:
+def comparator(operator):
+    """ Wrap a VersionInfo binary op method in a typechecker """
+    @wraps(operator)
+    def wrapper(self, other):
+        if not isinstance(other, tuple(comparable)):
+            return NotImplemented
+        return operator(self, other)
+    return wrapper
+
+# the VersionInfo class:
+class VersionInfo(VersionAncestor):
+    
+    """ NamedTuple-descendant class allowing for convenient
+        and reasonably sane manipulation of semantic-version
+        (née “semver”) string-triple numberings, or whatever
+        the fuck is the technical term for them, erm. Yes!
+    """
+    
+    SEPARATORS = '..-+'
+    UNKNOWN = '‽'
+    NULL_VERSION = "%s.%s.%s" % ((UNKNOWN,) * 3)
+    REG = re.compile('(?P<major>[\d‽]+)\.'     \
+                     '(?P<minor>[\d‽]+)'       \
+                     '(?:\.(?P<patch>[\d‽]+)'  \
+                     '(?:\-(?P<pre>[\w‽]+)'    \
+                     '(?:\+(?P<build>[\d‽]+))?)?)?')
+    
+    @classmethod
+    def from_string(cls, version_string):
+        """ Instantiate a VersionInfo with a semver string """
+        result = cls.REG.search(version_string)
+        if result:
+            return cls.from_dict(result.groupdict())
+        return cls.from_dict({ field : cls.UNKNOWN for field in FIELDS })
+    
+    @classmethod
+    def from_dict(cls, version_dict):
+        """ Instantiate a VersionInfo with a dict of related values
+            (q.v. FIELD string names supra.)
+        """
+        assert 'major' in version_dict
+        assert 'minor' in version_dict
+        assert frozenset(version_dict.keys()).issubset(fields)
+        return cls(**version_dict)
+    
+    def to_string(self):
+        """ Return the VersionInfo data as a semver string """
+        if not bool(self):
+            return type(self).NULL_VERSION
+        SEPARATORS = type(self).SEPARATORS
+        out = "%i%s%i" % (self.major or 0, SEPARATORS[0],
+                          self.minor or 0)
+        if self.patch is not None:
+            out += "%s%i" % (SEPARATORS[1], self.patch)
+            if self.pre:
+                out += "%s%s" % (SEPARATORS[2], self.pre)
+                if self.build:
+                    out += "%s%i" % (SEPARATORS[3], self.build)
+        return out
+    
+    def to_dict(self):
+        out = OrderedDict()
+        for field in FIELDS:
+            if getattr(self, field, None) is not None:
+                out[field] = getattr(self, field)
+        return out
+    
+    def to_tuple(self):
+        return (self.major, self.minor, self.patch,
+                self.pre, self.build)
+    
+    def __new__(cls, from_value=None, major='‽', minor='‽',
+                                      patch='‽', pre='‽',
+                                      build=0):
+        """ Instantiate a VersionInfo, populating its fields per args """
+        if from_value is not None:
+            if type(from_value) in string_types:
+                return cls.from_string(from_value)
+            elif type(from_value) in byte_types:
+                return cls.from_string(from_value.decode('UTF-8'))
+            elif type(from_value) in dict_types:
+                return cls.from_dict(from_value)
+            elif type(from_value) is cls:
+                return cls.from_dict(from_value.to_dict())
+        if cls.UNKNOWN in str(major):
+            major = None
+        if cls.UNKNOWN in str(minor):
+            minor = None
+        if cls.UNKNOWN in str(patch):
+            patch = None
+        if cls.UNKNOWN in str(pre):
+            pre = None
+        if cls.UNKNOWN in str(build):
+            build = 0
+        instance = super(VersionInfo, cls).__new__(cls, intify(major),
+                                                        intify(minor),
+                                                        intify(patch),
+                                                        strify(pre),
+                                                               build)
+        return instance
+    
+    def __str__(self):
+        """ Stringify the VersionInfo (q.v. “to_string(…)” supra.) """
+        return self.to_string()
+    
+    def __bytes__(self):
+        """ Bytes-ify the VersionInfo (q.v. “to_string(…)” supra.) """
+        return bytes(self.to_string())
+    
+    def __hash__(self):
+        """ Hash the VersionInfo, using its tuplized value """
+        return hash(self.to_tuple())
+    
+    def __bool__(self):
+        """ An instance of VersionInfo is considered Falsey if its “major”,
+           “minor”, and “patch” fields are all set to None; otherwise it’s
+            a Truthy value in boolean contexts
+        """
+        return not (self.major is None and \
+                    self.minor is None and \
+                    self.patch is None)
+    
+    # Comparison methods also lifted from “semver”: https://git.io/fhb9i
+    
+    @comparator
+    def __eq__(self, other):
+        return compare_keys(self._asdict(), dictify(other)) == 0
+    
+    @comparator
+    def __ne__(self, other):
+        return compare_keys(self._asdict(), dictify(other)) != 0
+    
+    @comparator
+    def __lt__(self, other):
+        return compare_keys(self._asdict(), dictify(other)) < 0
+    
+    @comparator
+    def __le__(self, other):
+        return compare_keys(self._asdict(), dictify(other)) <= 0
+    
+    @comparator
+    def __gt__(self, other):
+        return compare_keys(self._asdict(), dictify(other)) > 0
+    
+    @comparator
+    def __ge__(self, other):
+        return compare_keys(self._asdict(), dictify(other)) >= 0
+
+# the Blit project version:
+version = VersionInfo(__version__)
+
+# inline tests:
+def test():
+    # print(VersionInfo.REG)
+    print("VersionInfo Instance:", repr(version))
+    print("Semantic Version:", version)
+    
+    assert version  < VersionInfo("9.0.0")
+    assert version == VersionInfo(version)
+    assert version == VersionInfo(__version__)
+    assert version <= VersionInfo(__version__)
+    assert version >= VersionInfo(__version__)
+    assert version  > VersionInfo(b'0.1.0')
+    assert version != VersionInfo(b'0.1.0')
+    
+    assert bool(version)
+    assert not bool(VersionInfo('‽.‽.‽'))
+
+if __name__ == '__main__':
+    test()

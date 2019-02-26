@@ -1,3 +1,4 @@
+# encoding: utf-8
 """ Blend functions.
 
 A blend is a function that accepts two identically-sized

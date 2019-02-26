@@ -1,3 +1,4 @@
+# encoding: utf-8
 ''' Simple Photoshop file (PSD) writing support.
 
 Blit blending operations normally return new, flattened bitmap objects.

@@ -1,3 +1,4 @@
+# encoding: utf-8
 """ Adjustment factory functions.
 
 An adjustment is a function that takes a list of four identically-sized channel

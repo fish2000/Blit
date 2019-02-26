@@ -1,3 +1,4 @@
+# encoding: utf-8
 """ Tests for Blit.
 
 Run as a module, like this:
