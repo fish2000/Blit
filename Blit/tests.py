@@ -3,6 +3,8 @@
 Run as a module, like this:
     python -m Blit.tests
 """
+from __future__ import print_function
+
 import unittest
 from PIL import Image
 
@@ -14,7 +16,7 @@ def _str2img(str):
     return Image.fromstring('RGBA', (3, 3), str)
 
 class Tests(unittest.TestCase):
-
+    
     def setUp(self):
         """
         """
@@ -37,13 +39,13 @@ class Tests(unittest.TestCase):
         self.streets = Bitmap(_str2img(_nil + _nil + _fff + _nil + _fff + _nil + _fff + _nil + _nil))
     
     def test0(self):
-    
+        
         out = self.base
         out = out.blend(self.outlines)
         out = out.blend(self.streets)
         
         img = out.image()
-
+        
         assert img.getpixel((0, 0)) == (0xCC, 0xCC, 0xCC, 0xFF), 'top left pixel'
         assert img.getpixel((1, 0)) == (0x99, 0x99, 0x99, 0xFF), 'top center pixel'
         assert img.getpixel((2, 0)) == (0xFF, 0xFF, 0xFF, 0xFF), 'top right pixel'
@@ -55,13 +57,13 @@ class Tests(unittest.TestCase):
         assert img.getpixel((2, 2)) == (0xCC, 0xCC, 0xCC, 0xFF), 'bottom right pixel'
     
     def test1(self):
-
+        
         out = self.base
         out = out.blend(self.outlines, self.halos)
         out = out.blend(self.streets)
         
         img = out.image()
-
+        
         assert img.getpixel((0, 0)) == (0xCC, 0xCC, 0xCC, 0xFF), 'top left pixel'
         assert img.getpixel((1, 0)) == (0x99, 0x99, 0x99, 0xFF), 'top center pixel'
         assert img.getpixel((2, 0)) == (0xFF, 0xFF, 0xFF, 0xFF), 'top right pixel'
@@ -73,7 +75,7 @@ class Tests(unittest.TestCase):
         assert img.getpixel((2, 2)) == (0xCC, 0xCC, 0xCC, 0xFF), 'bottom right pixel'
     
     def test2(self):
-    
+        
         out = Color(0xcc, 0xcc, 0xcc)
         out = out.blend(self.outlines, self.halos)
         out = out.blend(self.streets)
@@ -109,7 +111,7 @@ class Tests(unittest.TestCase):
         assert img.getpixel((2, 2)) == (0xCC, 0xCC, 0xCC, 0xFF), 'bottom right pixel'
     
     def test4(self):
-
+        
         out = Color(0x00, 0x00, 0x00, 0x00)
         out = out.blend(Color(0x99, 0x99, 0x99), self.halos)
         out = out.blend(self.streets)
@@ -127,14 +129,14 @@ class Tests(unittest.TestCase):
         assert img.getpixel((2, 2)) == (0x00, 0x00, 0x00, 0x00), 'bottom right pixel'
     
     def test5(self):
-
+        
         out = Color(0x00, 0x00, 0x00, 0x00)
         out = out.blend(Color(0x99, 0x99, 0x99))
         
         img = out.image()
         
         assert img.getpixel((0, 0)) == (0x99, 0x99, 0x99, 0xFF)
-
+    
     def test6(self):
     
         image = Image.new('RGBA', (10, 20), (0xff, 0x00, 0xff, 0xff))
@@ -143,7 +145,7 @@ class Tests(unittest.TestCase):
         
         image = utils.rgba2img(layer.rgba(10, 20))
         assert image.size == layer.size()
-
+        
         assert image.getpixel((0, 0)) == (0xff, 0x00, 0xff, 0xff)
         assert image.getpixel((9, 19)) == (0xff, 0x00, 0xff, 0xff)
 
@@ -151,23 +153,23 @@ class AlphaTests(unittest.TestCase):
     """
     """
     def setUp(self):
-
+        
         _808f = '\x80\x80\x80\xFF'
         _fff0, _fff8, _ffff = '\xFF\xFF\xFF\x00', '\xFF\xFF\xFF\x80', '\xFF\xFF\xFF\xFF'
         _0000, _0008, _000f = '\x00\x00\x00\x00', '\x00\x00\x00\x80', '\x00\x00\x00\xFF'
         
         # 50% gray all over
         self.gray = Bitmap(_str2img(_808f * 9))
-            
+        
         # nothing anywhere
         self.nothing = Bitmap(_str2img(_0000 * 9))
-            
+        
         # opaque horizontal gradient, black to white
         self.h_gradient = Bitmap(_str2img((_000f + _808f + _ffff) * 3))
-            
+        
         # transparent white at top to opaque white at bottom
         self.white_wipe = Bitmap(_str2img(_fff0 * 3 + _fff8 * 3 + _ffff * 3))
-            
+        
         # transparent black at top to opaque black at bottom
         self.black_wipe = Bitmap(_str2img(_0000 * 3 + _0008 * 3 + _000f * 3))
     
@@ -206,7 +208,7 @@ class AlphaTests(unittest.TestCase):
         assert img.getpixel((2, 2)) == (0x00, 0x00, 0x00, 0xFF), 'bottom right pixel'
     
     def test2(self):
-    
+        
         out = self.gray
         out = out.blend(self.white_wipe, self.h_gradient)
         
@@ -260,7 +262,7 @@ class BlendTests(unittest.TestCase):
     """
     """
     def setUp(self):
-    
+        
         _808f = '\x80\x80\x80\xFF'
         _ffff = '\xFF\xFF\xFF\xFF'
         _000f = '\x00\x00\x00\xFF'
@@ -372,7 +374,7 @@ class AdjustmentTests(unittest.TestCase):
         
         # simple 50% gray dot
         self.gray = Color(0x80, 0x80, 0x80)
-    
+        
         # opaque horizontal gradient, black to white
         self.h_gradient = Bitmap(_str2img((_000f + _808f + _ffff) * 3))
     

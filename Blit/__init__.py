@@ -18,6 +18,8 @@ and Blit.photoshop for PSD file output support.
 >>> orange = Color(255, 220, 180)
 >>> duotone = purple.blend(orange, mask=photo)
 """
+from __future__ import print_function, absolute_import
+
 __version__ = '1.4.0'
 
 import numpy

@@ -15,10 +15,12 @@ Output PSD files have been tested with Photoshop CS3 on Mac, based on this spec:
 
 Photoshop is a registered trademark of Adobe Corporation.
 '''
+from __future__ import print_function
+
 from struct import pack
+# from PIL import Image
 
 import numpy
-from PIL import Image
 
 from . import Layer
 from . import utils
@@ -53,7 +55,7 @@ class Dummy:
 
 class PhotoshopFile:
     ''' Complete Photoshop file.
-    
+        
         http://www.adobe.com/devnet-apps/photoshop/fileformatashtml/PhotoshopFileFormats.htm#50577409_pgfId-1036097
         
         The Photoshop file format is divided into five major parts, as shown
@@ -74,7 +76,7 @@ class PhotoshopFile:
 
 class FileHeader:
     ''' The file header contains the basic properties of the image.
-    
+        
         http://www.adobe.com/devnet-apps/photoshop/fileformatashtml/PhotoshopFileFormats.htm#50577409_19840
     '''
     def __init__(self, channel_count, height, width, depth, color_mode):
@@ -111,7 +113,7 @@ class ImageResourceSection (Dummy):
 
 class LayerMaskInformation:
     ''' The fourth section of a Photoshop file with information about layers and masks.
-    
+        
         http://www.adobe.com/devnet-apps/photoshop/fileformatashtml/PhotoshopFileFormats.htm#50577409_75067
     '''
     def __init__(self, layer_info, global_layer_mask):
@@ -127,7 +129,7 @@ class LayerMaskInformation:
 
 class LayerInformation:
     ''' Layer info shows the high-level organization of the layer information.
-    
+        
         http://www.adobe.com/devnet-apps/photoshop/fileformatashtml/PhotoshopFileFormats.htm#50577409_16000
     '''
     def __init__(self, layer_count, layer_records, channel_image_data):
@@ -145,7 +147,7 @@ class LayerInformation:
 
 class LayerRecord:
     ''' Information about each layer.
-    
+        
         http://www.adobe.com/devnet-apps/photoshop/fileformatashtml/PhotoshopFileFormats.htm#50577409_13084
     '''
     def __init__(self, rectangle, channel_count, channel_info, blend_mode, opacity,
@@ -167,7 +169,7 @@ class LayerRecord:
         blending_ranges = self.blending_ranges.tostring()
         name = pascal_string(self.name, 4)
         additional_infos = ''.join([info.tostring() for info in self.additional_infos])
-    
+        
         parts = [
             ''.join(map(uint32, self.rectangle)),
             uint16(self.channel_count),
@@ -194,7 +196,7 @@ class GlobalLayerMask (Dummy):
 
 class AdditionalLayerInfo:
     ''' Several types of layer information added in Photoshop 4.0 and later.
-    
+        
         http://www.adobe.com/devnet-apps/photoshop/fileformatashtml/PhotoshopFileFormats.htm#50577409_71546
     '''
     code, data = None, None
@@ -207,7 +209,7 @@ class SolidColorInfo (AdditionalLayerInfo):
     '''
     def __init__(self, red, green, blue):
         red, green, blue = [double(component) for component in (red, green, blue)]
-    
+        
         self.code = 'SoCo'
         self.data = '\x00\x00\x00\x10\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00null\x00\x00\x00\x01\x00\x00\x00\x00Clr Objc\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00RGBC\x00\x00\x00\x03\x00\x00\x00\x00Rd  doub%(red)s\x00\x00\x00\x00Grn doub%(green)s\x00\x00\x00\x00Bl  doub%(blue)s' % locals()
 
@@ -223,7 +225,7 @@ class LayerBlendingRangesData (Dummy):
 
 class ChannelImageData:
     ''' Bitmap content of color channels.
-    
+        
         http://www.adobe.com/devnet-apps/photoshop/fileformatashtml/PhotoshopFileFormats.htm#50577409_26431
     '''
     def __init__(self, channels):
@@ -237,7 +239,7 @@ class ChannelImageData:
 
 class ImageData:
     ''' Bitmap content of flattened whole-file preview.
-    
+        
         http://www.adobe.com/devnet-apps/photoshop/fileformatashtml/PhotoshopFileFormats.htm#50577409_89817
     '''
     def __init__(self, channels):
@@ -251,7 +253,7 @@ class ImageData:
 
 class PSD (Layer):
     ''' Represents a Photoshop document that can be combined with other layers.
-    
+        
         Behaves identically to Blit.Layer with addition of a save() method.
     '''
     def __init__(self, width, height):
@@ -288,7 +290,7 @@ class PSD (Layer):
             if psd.head:
                 file_header = psd.head
                 break
-
+            
             psd = psd.base
         
         #
@@ -298,7 +300,7 @@ class PSD (Layer):
         channels = []
         
         for (index, (name, layer, mask, opacity, mode, clipped)) in enumerate(info):
-        
+            
             record = dict(
                 name = name,
                 channel_count = 4,
@@ -313,7 +315,7 @@ class PSD (Layer):
                 )
             
             channels += utils.rgba2img(layer.rgba(*self.size())).split()
-
+            
             if index == 0:
                 #
                 # Background layer has its alpha channel removed.
@@ -362,14 +364,14 @@ _modes = {
 
 class _PSDMore (PSD):
     ''' Represents a Photoshop document that can be combined with other layers.
-    
+        
         Behaves identically to Blit.Layer with addition of a save() method.
     '''
     head = None
 
     def __init__(self, base, name, other, mask=None, opacity=1, blendfunc=None, clipped=False):
         ''' Create a new PSD instance with the given additional Layer blended.
-        
+            
             Arguments
               base: existing PSD instance.
               name: string with name of new layer for Photoshop output.

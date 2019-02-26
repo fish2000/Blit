@@ -3,11 +3,13 @@
 A blend is a function that accepts two identically-sized
 input channel arrays and returns a single output array.
 """
+from __future__ import print_function
+
 import numpy
 
 def combine(bottom_rgba, top_rgb, mask_chan, opacity, blendfunc):
     """ Blend arrays using a given mask, opacity, and blend function.
-    
+        
         A blend function accepts two floating point, two-dimensional
         numpy arrays with values in 0-1 range and returns a third.
     """
@@ -21,14 +23,14 @@ def combine(bottom_rgba, top_rgb, mask_chan, opacity, blendfunc):
     if not blendfunc:
         # plain old paste
         output_rgba[:3] = [numpy.copy(chan) for chan in top_rgb]
-
+    
     else:
         output_rgba[:3] = [blendfunc(bottom_rgba[c], top_rgb[c]) for c in (0, 1, 2)]
         
     # comined effective mask channel
     if opacity < 1:
         mask_chan = mask_chan * opacity
-
+    
     # pixels from mask that aren't full-white
     gr = mask_chan < 1
     
@@ -53,47 +55,47 @@ def combine(bottom_rgba, top_rgb, mask_chan, opacity, blendfunc):
     
     # output mask is the screen of the existing and overlaid alphas
     output_rgba[3] = screen(bottom_rgba[3], mask_chan)
-
+    
     return output_rgba
 
 def screen(bottom_chan, top_chan):
     """ Screen blend function.
-    
+        
         Math from http://illusions.hu/effectwiki/doku.php?id=screen_blending
     """
     return 1 - (1 - bottom_chan) * (1 - top_chan)
 
 def add(bottom_chan, top_chan):
     """ Additive blend function.
-    
+        
         Math from http://illusions.hu/effectwiki/doku.php?id=additive_blending
     """
     return numpy.clip(bottom_chan + top_chan, 0, 1)
 
 def multiply(bottom_chan, top_chan):
     """ Multiply blend function.
-    
+        
         Math from http://illusions.hu/effectwiki/doku.php?id=multiply_blending
     """
     return bottom_chan * top_chan
 
 def subtract(bottom_chan, top_chan):
     """ Subtractive blend function.
-    
+        
         Math from http://illusions.hu/effectwiki/doku.php?id=subtractive_blending
     """
     return numpy.clip(bottom_chan - top_chan, 0, 1)
 
 def linear_light(bottom_chan, top_chan):
     """ Linear light blend function.
-    
+        
         Math from http://illusions.hu/effectwiki/doku.php?id=linear_light_blending
     """
     return numpy.clip(bottom_chan + 2 * top_chan - 1, 0, 1)
 
 def hard_light(bottom_chan, top_chan):
     """ Hard light blend function.
-    
+        
         Math from http://illusions.hu/effectwiki/doku.php?id=hard_light_blending
     """
     # different pixel subsets for dark and light parts of overlay

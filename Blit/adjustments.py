@@ -4,8 +4,9 @@ An adjustment is a function that takes a list of four identically-sized channel
 arrays (red, green, blue, and alpha) and returns a new list of four channels.
 The factory functions in this module return functions that perform adjustments.
 """
-import sympy
-import numpy
+from __future__ import print_function
+
+import sympy, numpy
 
 def threshold(red_value, green_value=None, blue_value=None):
     """ Return a function that applies a threshold operation.
@@ -13,7 +14,7 @@ def threshold(red_value, green_value=None, blue_value=None):
     if green_value is None or blue_value is None:
         # if there aren't three provided, use the one
         green_value, blue_value = red_value, red_value
-
+    
     # knowns are given in 0-255 range, need to be converted to floats
     red_value, green_value, blue_value = red_value / 255.0, green_value / 255.0, blue_value / 255.0
     
@@ -37,7 +38,7 @@ def curves(black, grey, white):
     """ Return a function that applies a curves operation.
         
         Adjustment inspired by Photoshop "Curves" feature.
-    
+        
         Arguments are three integers that are intended to be mapped to black,
         grey, and white outputs. Curves2 offers more flexibility, see
         curves2().
@@ -60,7 +61,7 @@ def curves(black, grey, white):
     
     def adjustfunc(rgba):
         red, green, blue, alpha = rgba
-    
+        
         # arrays for each coefficient
         do, re, mi = [float(co[n]) * numpy.ones(red.shape, numpy.float32) for n in (a, b, c)]
         
@@ -77,18 +78,18 @@ def curves2(map_red, map_green=None, map_blue=None):
     """ Return a function that applies a curves operation.
         
         Adjustment inspired by Photoshop "Curves" feature.
-    
+        
         Arguments are given in the form of three value mappings, typically
         mapping black, grey and white input and output values. One argument
         indicates an effect applicable to all channels, three arguments apply
         effects to each channel separately.
-    
+        
         Simple monochrome inversion:
             map_red=[[0, 255], [128, 128], [255, 0]]
-    
+        
         Darken a light image by pushing light grey down by 50%, 0x99 to 0x66:
             map_red=[[0, 255], [153, 102], [255, 0]]
-    
+        
         Shaded hills, with Imhof-style purple-blue shadows and warm highlights:
             map_red=[[0, 22], [128, 128], [255, 255]],
             map_green=[[0, 29], [128, 128], [255, 255]],
@@ -97,7 +98,7 @@ def curves2(map_red, map_green=None, map_blue=None):
     if map_green is None or map_blue is None:
         # if there aren't three provided, use the one
         map_green, map_blue = map_red, map_red
-
+    
     def adjustfunc(rgba):
         red, green, blue, alpha = rgba
         out = []
