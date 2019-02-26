@@ -18,14 +18,25 @@ and Blit.photoshop for PSD file output support.
 >>> orange = Color(255, 220, 180)
 >>> duotone = purple.blend(orange, mask=photo)
 """
-__version__ = 'N.N.N'
+__version__ = '1.4.0'
 
 import numpy
 from PIL import Image
 
+# from . import adjustments
 from . import blends
-from . import adjustments
 from . import utils
+
+PY3 = False
+
+try:
+    import builtins
+except ImportError:
+    import __builtin__ as builtins
+
+if not hasattr(builtins, 'unicode'):
+    unicode = str
+    PY3 = True
 
 class Layer:
     """ Represents a raster layer that can be combined with other layers.
@@ -34,7 +45,7 @@ class Layer:
         """ Channels is a four-element list of numpy arrays: red, green, blue, alpha.
         """
         self._rgba = channels
-
+    
     def size(self):
         """ Return width and height of the raster layer in pixels.
         """
@@ -50,12 +61,12 @@ class Layer:
         
         if w == width and h == height:
             return self._rgba
-
+        
         #
         # In theory, this should bring back a right-sized image.
         #
         r, g, b, a = [numpy.zeros((height, width), dtype=float) for i in '1234']
-
+        
         w = min(w, width)
         h = min(h, height)
         
@@ -157,7 +168,7 @@ class Color (Layer):
         """
         # make a list of 1x1 arrays as though this was a bitmap
         rgba = [numpy.ones((1, 1), dtype=float) * c for c in self._components]
-
+        
         # apply adjustment to arrays and turn them back into 8-bit components
         rgba = [chan[0,0] * 255 for chan in adjustfunc(rgba)]
         

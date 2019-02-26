@@ -428,7 +428,7 @@ class AdjustmentTests(unittest.TestCase):
         assert img.getpixel((1, 0)) == (0x80, 0x80, 0x80, 0xFF), 'top center pixel'
         assert img.getpixel((2, 0)) == (0x00, 0x00, 0x00, 0xFF), 'top right pixel'
     
-    def test4(self):
+    def test5(self):
         
         red_map   = [[0, 22], [128, 128], [255, 255]]
         green_map = [[0, 29], [128, 128], [255, 255]]
@@ -441,14 +441,14 @@ class AdjustmentTests(unittest.TestCase):
         assert img.getpixel((1, 0)) == (128, 128, 128, 0xFF), 'top center pixel'
         assert img.getpixel((2, 0)) == (255, 255, 228, 0xFF), 'top right pixel'
     
-    def test5(self):
+    def test6(self):
         
         out = self.gray.adjust(adjustments.threshold(0x99))
         img = out.image()
         
         assert img.getpixel((0, 0)) == (0x00, 0x00, 0x00, 0xFF)
     
-    def test6(self):
+    def test7(self):
         
         out = self.gray.adjust(adjustments.threshold(0x66))
         img = out.image()
